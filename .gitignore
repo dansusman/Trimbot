@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+.DS_Store
+Trimbot.app/
+*.zip
