@@ -11,12 +11,74 @@ public enum IndentNormalizer {
             return stripped.joined(separator: "\n")
         }
         if hasMarkdownStructure(lines) {
+            return stripWrapContinuations(lines).joined(separator: "\n")
+        }
+        if looksLikeCode(lines) {
             return input
         }
         let stripped = lines.map { line -> Substring in
             isBlank(line) ? line : line.drop { $0 == " " || $0 == "\t" }
         }
         return stripped.joined(separator: "\n")
+    }
+
+    private static let codeLinePrefixes: [String] = [
+        "func ", "def ", "class ", "import ", "package ", "from ",
+        "var ", "let ", "const ", "type ", "struct ", "enum ", "protocol ",
+        "interface ", "public ", "private ", "internal ", "fileprivate ",
+        "return ", "if ", "for ", "while ", "switch ", "case ", "guard ",
+        "func(", "fn ", "fn(",
+    ]
+
+    private static func looksLikeCode(_ lines: [Substring]) -> Bool {
+        var sawOpenBrace = false
+        var sawCloseBrace = false
+        for line in lines {
+            let body = line.drop { $0 == " " || $0 == "\t" }
+            if body.isEmpty { continue }
+            for prefix in codeLinePrefixes where body.hasPrefix(prefix) {
+                return true
+            }
+            if body == "return" { return true }
+            if line.contains("{") { sawOpenBrace = true }
+            if line.contains("}") { sawCloseBrace = true }
+        }
+        return sawOpenBrace && sawCloseBrace
+    }
+
+    private static func stripWrapContinuations(_ lines: [Substring]) -> [Substring] {
+        let bulletPrefix = minListLineIndent(lines)
+        var inFence = false
+        return lines.map { line -> Substring in
+            if isFencedCodeDelimiter(line) {
+                inFence.toggle()
+                return line
+            }
+            if inFence || isBlank(line) { return line }
+            if isMarkdownListLine(line) || isBlockquoteLine(line) || isTableLine(line) {
+                return dropLeading(line, count: bulletPrefix)
+            }
+            return line.drop { $0 == " " || $0 == "\t" }
+        }
+    }
+
+    private static func minListLineIndent(_ lines: [Substring]) -> Int {
+        var minimum: Int? = nil
+        for line in lines where isMarkdownListLine(line) {
+            let n = leadingWhitespace(line).count
+            minimum = minimum.map { Swift.min($0, n) } ?? n
+        }
+        return minimum ?? 0
+    }
+
+    private static func dropLeading(_ line: Substring, count: Int) -> Substring {
+        var i = line.startIndex
+        var dropped = 0
+        while i < line.endIndex, dropped < count, line[i] == " " || line[i] == "\t" {
+            i = line.index(after: i)
+            dropped += 1
+        }
+        return line[i...]
     }
 
     private static func hasMarkdownStructure(_ lines: [Substring]) -> Bool {
