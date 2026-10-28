@@ -39,11 +39,15 @@ public enum IndentNormalizer {
             for prefix in codeLinePrefixes where body.hasPrefix(prefix) {
                 return true
             }
-            if body == "return" { return true }
+            if body == "return" || isObjectiveCMethodSignature(body) { return true }
             if line.contains("{") { sawOpenBrace = true }
             if line.contains("}") { sawCloseBrace = true }
         }
         return sawOpenBrace && sawCloseBrace
+    }
+
+    private static func isObjectiveCMethodSignature(_ body: Substring) -> Bool {
+        body.wholeMatch(of: /[-+] ?\([^)\n]+\)\w.*/) != nil
     }
 
     private static func stripWrapContinuations(_ lines: [Substring]) -> [Substring] {
@@ -109,6 +113,7 @@ public enum IndentNormalizer {
     private static func isMarkdownListLine(_ line: Substring) -> Bool {
         let body = line.drop { $0 == " " || $0 == "\t" }
         guard let first = body.first else { return false }
+        if isObjectiveCMethodSignature(body) { return false }
         if first == "-" || first == "*" || first == "+" {
             let after = body.dropFirst()
             return after.first == " " || after.first == "\t"

@@ -131,6 +131,21 @@ struct IndentNormalizerTests {
         #expect(IndentNormalizer.normalize(input) == input)
     }
 
+    @Test func preservesObjectiveCMethod() {
+        let input = "- (instancetype)initWithFoo:(Foo *)foo {\n    if ( self = [super init] ) {\n        _foo = foo;\n    }\n    return self;\n}"
+        #expect(IndentNormalizer.normalize(input) == input)
+    }
+
+    @Test func preservesObjectiveCClassMethod() {
+        let input = "+ (instancetype)shared {\n    return [[self alloc] init];\n}"
+        #expect(IndentNormalizer.normalize(input) == input)
+    }
+
+    @Test func treatsParentheticalDashItemAsMarkdownList() {
+        let input = "- (optional) foo bar\n  wrapped\n- next"
+        #expect(IndentNormalizer.normalize(input) == "- (optional) foo bar\nwrapped\n- next")
+    }
+
     @Test func preservesPythonClassWithMethods() {
         let input = "class Foo:\n    def bar(self):\n        for x in range(3):\n            print(x)"
         #expect(IndentNormalizer.normalize(input) == input)
